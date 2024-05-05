@@ -55,9 +55,12 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define SAT_MAX 100
 #define BRT_MAX 100
 
-#define LAYER_GAMING 1
-#define LAYER_LOWER 2
-#define LAYER_NUMERIC 3
+#define LAYER_Base 0
+#define LAYER_Azerty 1
+#define LAYER_Gaming 2
+#define LAYER_Lower 3
+#define LAYER_Raise 4
+#define LAYER_Magic 5
 
 BUILD_ASSERT(CONFIG_ZMK_RGB_UNDERGLOW_BRT_MIN <= CONFIG_ZMK_RGB_UNDERGLOW_BRT_MAX,
              "ERROR: RGB underglow maximum brightness is less than minimum brightness");
@@ -286,7 +289,6 @@ static void zmk_led_write_pixels(void) {
 #if !UNDERGLOW_INDICATORS_ENABLED
 static int zmk_led_generate_status(void) { return 0; }
 static bool valdur_layer_active(int layer) { return peripheral_layer_active(layer); }
-
 #else
 
 static bool valdur_layer_active(int layer) { return zmk_keymap_layer_active(layer); }
@@ -441,13 +443,26 @@ static inline struct led_rgb hue_sat(int hue, int sat) {
     return hsb_to_rgb(hsb_scale_min_max(hsb));
 }
 
-#define MK_GREEN hue_sat(150, 100)
-#define MK_RED hue_sat(348, 100)
-#define MK_BLUE hue_sat(194, 100)
-#define MK_ORANGE hue_sat(20, 100)
-#define MK_YELLOW hue_sat(51, 100)
-#define MK_PURPLE hue_sat(267, 60)
-#define MK_WHITE hue_sat(0, 0);
+static struct led_rgb hex_to_rgb(uint8_t r, uint8_t g, uint8_t b) {
+    struct zmk_led_hsb hsb = state.color;
+    return (struct led_rgb){
+        r : (hsb.b * (r)) / 0xff,
+        g : (hsb.b * (g)) / 0xff,
+        b : (hsb.b * (b)) / 0xff
+    };
+}
+
+#define GREEN hex_to_rgb(0, 0xff, 0)
+#define RED hex_to_rgb(0xff, 0, 0)
+#define BLUE hex_to_rgb(0, 0, 0xff)
+#define TEAL hex_to_rgb(0, 0x80, 0x80)
+#define ORANGE hex_to_rgb(0xff, 0xa5, 0)
+#define YELLOW hex_to_rgb(0xff, 0xff, 0)
+#define GOLD hex_to_rgb(0xff, 0xd7, 0)
+#define PURPLE hex_to_rgb(0x80, 0, 0x80)
+#define PINK hex_to_rgb(0xff, 0xc0, 0xcb)
+#define WHITE hex_to_rgb(0xff, 0xff, 0xff)
+#define ______  ((struct led_rgb){r : 0, g : 0, b : 0})
 
 /*
   MoErgo 40 LEDs
@@ -462,98 +477,97 @@ static inline struct led_rgb hue_sat(int hue, int sat) {
                3 4 5       5 4 3
 */
 
-static void valdur_indicate_custom_layers(void) {
-    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        pixels[i] = (struct led_rgb){r : 0, g : 0, b : 0};
+/*
+        set_pixels(
+            ______, ______, ______ ,______, ______,                                                                     ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______, ______, ______, ______,     ______, ______, ______, ______, ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______,         ______, ______, ______,     ______, ______, ______,         ______, ______, ______, ______, ______
+        );
+*/
+static inline void set_rgb_pixels(
+        struct led_rgb l000, struct led_rgb l001, struct led_rgb l002, struct led_rgb l003, struct led_rgb l004,
+                                                                                                    struct led_rgb l005, struct led_rgb l006, struct led_rgb l007, struct led_rgb l008, struct led_rgb l009,
+        struct led_rgb l100, struct led_rgb l101, struct led_rgb l102, struct led_rgb l103, struct led_rgb l104, struct led_rgb l105,
+                                                                               struct led_rgb l106, struct led_rgb l107, struct led_rgb l108, struct led_rgb l109, struct led_rgb l110, struct led_rgb l111,
+        struct led_rgb l200, struct led_rgb l201, struct led_rgb l202, struct led_rgb l203, struct led_rgb l204, struct led_rgb l205,
+                                                                               struct led_rgb l206, struct led_rgb l207, struct led_rgb l208, struct led_rgb l209, struct led_rgb l210, struct led_rgb l211,
+        struct led_rgb l300, struct led_rgb l301, struct led_rgb l302, struct led_rgb l303, struct led_rgb l304, struct led_rgb l305,
+                                                                               struct led_rgb l306, struct led_rgb l307, struct led_rgb l308, struct led_rgb l309, struct led_rgb l310, struct led_rgb l311,
+        struct led_rgb l400, struct led_rgb l401, struct led_rgb l402, struct led_rgb l403, struct led_rgb l404, struct led_rgb l405, struct led_rgb l406, struct led_rgb l407, struct led_rgb l408,
+                struct led_rgb l409, struct led_rgb l410, struct led_rgb l411, struct led_rgb l412, struct led_rgb l413, struct led_rgb l414, struct led_rgb l415, struct led_rgb l416, struct led_rgb l417,
+        struct led_rgb l500, struct led_rgb l501, struct led_rgb l502, struct led_rgb l503, struct led_rgb l504,                      struct led_rgb l505, struct led_rgb l506, struct led_rgb l507,
+                struct led_rgb l508, struct led_rgb l509, struct led_rgb l510,                      struct led_rgb l511, struct led_rgb l512, struct led_rgb l513, struct led_rgb l514, struct led_rgb l515
+) {
+#ifdef LEFT_HALF
+    struct led_rgb LED_MATRIX[] = {
+        l406,l407,l408,l505,l506,l507,
+        l105,l205,l305,l405,
+        l004,l104,l204,l304,l404,l504,
+        l003,l103,l203,l303,l403,l503,
+        l002,l102,l202,l302,l402,l502,
+        l001,l101,l201,l301,l401,l501,
+        l000,l100,l200,l300,l400,l500
+    };
+#else
+    struct led_rgb LED_MATRIX[] = {
+        l411,l410,l409,l510,l509,l508,
+        l106,l206,l306,l412,
+        l005,l107,l207,l307,l413,l511,
+        l006,l108,l208,l308,l414,l512,
+        l007,l109,l209,l309,l415,l513,
+        l008,l110,l210,l310,l416,l514,
+        l009,l111,l211,l311,l417,l515
+    };
+#endif
+    for (int i = 0; i < 40; i++) {
+        pixels[i] = LED_MATRIX[i];
     }
-    if (valdur_layer_active(LAYER_NUMERIC)) {
-        struct led_rgb col_green = MK_GREEN;
-        struct led_rgb col_yellow = MK_YELLOW;
+}
 
-#ifdef LEFT_HALF
-        // indicator
-        pixels[36] = col_green;
-#endif
+static void valdur_indicate_custom_layers(void) {
 
-        // numbers
-        pixels[11] = col_green;
-        pixels[12] = col_green;
-        pixels[13] = col_green;
-#ifdef RIGHT_HALF
-        pixels[14] = col_green;
-#endif
+    if (valdur_layer_active(LAYER_Raise)) {
+        set_rgb_pixels(
+            ______, ______, ______ ,______, ______,                                                                     ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______,                                                       PINK,   PINK,   PINK,   PINK,   PINK, ______,
+            ______,   BLUE, ______ ,  BLUE,   BLUE,   BLUE,                                                     ______, ______, ______, ______, ______,   BLUE,
+            ______,   BLUE, ______ ,______, ______,   BLUE,                                                     ______, ______, ______, ______, ______, ______,
+              BLUE, ______, ______ ,______, ______, ______, ______, ______, ______,     ______, ______, ______, ______, ______, ______, ______, ______,   BLUE,
+            ______, ______, ______ ,______, ______,         ______, ______, ______,     ______,  GREEN, ______,         ______, ______, ______, ______, ______
+        );
 
-        pixels[17] = col_green;
-        pixels[18] = col_green;
-        pixels[19] = col_green;
+    } else if (valdur_layer_active(LAYER_Lower)) {
+        set_rgb_pixels(
+            ______, ______, ______, ______, ______,                                                                    ______, ______, ______, ______, ______,
+            PURPLE,   PINK,   PINK,   PINK,   PINK,   PINK,                                                    ______,   GOLD, ORANGE, ORANGE, ORANGE,    RED,
+            PURPLE, ______, ______, ORANGE, ______, ______,                                                    ______, YELLOW, YELLOW, YELLOW, ORANGE, ______,
+            PURPLE, ______, ORANGE,    RED, ORANGE, ______,                                                    ______, YELLOW, YELLOW, YELLOW, ORANGE, ______,
+              BLUE, ______,    RED,    RED,    RED, ______, ______, ______, ______,    ______, ______, ______, ______, YELLOW, YELLOW, YELLOW,    RED,   BLUE,
+            ______, ______, ORANGE, ORANGE, ORANGE,         ______,  GREEN, ______,    ______, ______, ______,         YELLOW, YELLOW, YELLOW,    RED, ______
+        );
 
-        pixels[23] = col_green;
-        pixels[24] = col_green;
-        pixels[25] = col_green;
-#ifdef LEFT_HALF
-        pixels[26] = col_green;
-#endif
+    } else if (valdur_layer_active(LAYER_Gaming)) {
+        set_rgb_pixels(
+            ______, ______, ______, ______, ______,                                                                     ______, ______, ______, ______, ______,
+            ______, ______, ______, ______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______, ______, ______, ______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______,   TEAL, ______,    RED, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______,   BLUE,    RED,    RED,    RED, ______, ORANGE,   BLUE, ______,     ______, ______, ______, ______, ______, ______, ______, ______, ______,
+            ______,   BLUE, ______, ______, ______,            RED, ______, ______,     ______,  GREEN, ______,         ______, ______, ______, ______, ______
+        );
 
-        // operators
-        pixels[31] = col_yellow;
-        pixels[32] = col_yellow;
-        pixels[27] = col_yellow;
-
-        pixels[7] = col_yellow;
-        pixels[8] = col_yellow;
-        pixels[9] = col_yellow;
-
-    } else if (valdur_layer_active(LAYER_LOWER)) {
-        struct led_rgb col_orange = MK_ORANGE;
-        struct led_rgb col_blue = MK_BLUE;
-
-#ifdef LEFT_HALF
-        // indicator
-        pixels[37] = col_orange;
-#endif
-
-        // arrows
-        pixels[18] = col_orange;
-        pixels[25] = col_orange;
-        pixels[19] = col_orange;
-        pixels[13] = col_orange;
-
-        // // ctrl arrows
-        // pixels[8] = yellow;
-        // pixels[31] = yellow;
-
-        // home, end, pgup, pgdn
-        pixels[7] = col_blue;
-        pixels[8] = col_blue;
-        pixels[24] = col_blue;
-        pixels[12] = col_blue;
-    } else if (valdur_layer_active(LAYER_GAMING)) {
-        struct led_rgb col_red = MK_RED;
-        struct led_rgb col_blue = MK_BLUE;
-#ifdef LEFT_HALF
-
-        // indicator
-        pixels[38] = col_red;
-
-        // wsad
-        pixels[18] = col_red;
-        pixels[25] = col_red;
-        pixels[19] = col_red;
-        pixels[13] = col_red;
-
-        // enter, backspace, delete
-        pixels[5] = col_blue;
-        pixels[27] = col_blue;
-        pixels[33] = col_blue;
-#else
-        pixels[6] = col_red;
-#endif
     } else {
-#ifdef LEFT_HALF
-        pixels[6] = MK_PURPLE;
-#else
-        pixels[6] = MK_PURPLE;
-#endif
+        set_rgb_pixels(
+            ______, ______, ______ ,______, ______,                                                                     ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______, ______, ______, ______, ______,     ______, ______, ______, ______, ______, ______, ______, ______, ______,
+            ______, ______, ______ ,______, ______,         ______, ______, ______,     ______, ______, ______,         ______, ______, ______, ______, ______
+        );
     }
 }
 
