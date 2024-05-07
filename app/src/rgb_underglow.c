@@ -16,6 +16,8 @@
 #include <zmk/ble.h>
 #include <zmk/endpoints.h>
 #include <zmk/keymap.h>
+#include <zmk/matrix.h>
+
 #include <zmk/hid_indicators.h>
 #include <zmk/usb.h>
 
@@ -25,6 +27,7 @@
 #include <drivers/ext_power.h>
 
 #include <zmk/rgb_underglow.h>
+#include <zmk/rgb_underglow_layer.h>
 
 #include <zmk/activity.h>
 #include <zmk/event_manager.h>
@@ -452,45 +455,7 @@ static struct led_rgb hex_to_rgb(uint8_t r, uint8_t g, uint8_t b) {
     };
 }
 
-#define GREEN hex_to_rgb(0, 0xff, 0)
-#define RED hex_to_rgb(0xff, 0, 0)
-#define BLUE hex_to_rgb(0, 0, 0xff)
-#define TEAL hex_to_rgb(0, 0x80, 0x80)
-#define ORANGE hex_to_rgb(0xff, 0xa5, 0)
-#define YELLOW hex_to_rgb(0xff, 0xff, 0)
-#define GOLD hex_to_rgb(0xff, 0xd7, 0)
-#define PURPLE hex_to_rgb(0x80, 0, 0x80)
-#define PINK hex_to_rgb(0xff, 0xc0, 0xcb)
-#define WHITE hex_to_rgb(0xff, 0xff, 0xff)
-#define ______  ((struct led_rgb){r : 0, g : 0, b : 0})
-
-/*
-  MoErgo 40 LEDs
-
- 34 28 22 16 10                10 16 22 28 34
- 35 29 23 17 11 6            6 11 17 23 29 35
- 36 30 24 18 12 7            7 12 18 24 30 36
- 37 31 25 19 13 8            8 13 19 25 31 37
- 38 32 26 20 14 9            9 14 20 26 32 38
- 39 33 27 21 15                15 21 27 33 39
-               0 1 2       2 1 0
-               3 4 5       5 4 3
-*/
-
-/*
-        set_pixels(
-            ______, ______, ______ ,______, ______,                                                                     ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______, ______, ______, ______,     ______, ______, ______, ______, ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______,         ______, ______, ______,     ______, ______, ______,         ______, ______, ______, ______, ______
-        );
-*/
-#define UNDERGLOW_LAYER DT_PATH(underglow_layer)
-const uint32_t underglow_layer_lower[] = DT_PROP(UNDERGLOW_LAYER, layer_lower);
-
-static void set_rgb_pixels_2(const uint32_t *rgbmap, size_t rgbmap_len) {
+static void zmk_rgb_underglow_apply_rgbmap(uint32_t rgbmap[], size_t rgbmap_len) {
 #ifdef LEFT_HALF
     const uint8_t LED_MATRIX[] = {
         52,53,54,69,70,71,
@@ -512,105 +477,27 @@ static void set_rgb_pixels_2(const uint32_t *rgbmap, size_t rgbmap_len) {
         9,21,33,45,63,79
     };
 #endif
-    
     for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
-        if (i >= rgbmap_len) {
-            pixels[i] = ______;
+        uint8_t midx = LED_MATRIX[i];
+        if(midx >= ZMK_KEYMAP_LEN){
+            LOG_DBG("out of range");
         } else {
             pixels[i] = hex_to_rgb(
-                rgbmap[LED_MATRIX[i]] >> 16 & 0xFF,
-                rgbmap[LED_MATRIX[i]] >> 8 & 0xFF,
-                rgbmap[LED_MATRIX[i]] & 0xFF);
+                (rgbmap[midx] & 0xFF0000) >> 16,
+                (rgbmap[midx] & 0xFF00) >> 8,
+                rgbmap[midx] & 0xFF);
         }
     }
-
 }
 
-static inline void set_rgb_pixels(
-        struct led_rgb l000, struct led_rgb l001, struct led_rgb l002, struct led_rgb l003, struct led_rgb l004,
-                                                                                                    struct led_rgb l005, struct led_rgb l006, struct led_rgb l007, struct led_rgb l008, struct led_rgb l009,
-        struct led_rgb l100, struct led_rgb l101, struct led_rgb l102, struct led_rgb l103, struct led_rgb l104, struct led_rgb l105,
-                                                                               struct led_rgb l106, struct led_rgb l107, struct led_rgb l108, struct led_rgb l109, struct led_rgb l110, struct led_rgb l111,
-        struct led_rgb l200, struct led_rgb l201, struct led_rgb l202, struct led_rgb l203, struct led_rgb l204, struct led_rgb l205,
-                                                                               struct led_rgb l206, struct led_rgb l207, struct led_rgb l208, struct led_rgb l209, struct led_rgb l210, struct led_rgb l211,
-        struct led_rgb l300, struct led_rgb l301, struct led_rgb l302, struct led_rgb l303, struct led_rgb l304, struct led_rgb l305,
-                                                                               struct led_rgb l306, struct led_rgb l307, struct led_rgb l308, struct led_rgb l309, struct led_rgb l310, struct led_rgb l311,
-        struct led_rgb l400, struct led_rgb l401, struct led_rgb l402, struct led_rgb l403, struct led_rgb l404, struct led_rgb l405, struct led_rgb l406, struct led_rgb l407, struct led_rgb l408,
-                struct led_rgb l409, struct led_rgb l410, struct led_rgb l411, struct led_rgb l412, struct led_rgb l413, struct led_rgb l414, struct led_rgb l415, struct led_rgb l416, struct led_rgb l417,
-        struct led_rgb l500, struct led_rgb l501, struct led_rgb l502, struct led_rgb l503, struct led_rgb l504,                      struct led_rgb l505, struct led_rgb l506, struct led_rgb l507,
-                struct led_rgb l508, struct led_rgb l509, struct led_rgb l510,                      struct led_rgb l511, struct led_rgb l512, struct led_rgb l513, struct led_rgb l514, struct led_rgb l515
-) {
-#ifdef LEFT_HALF
-    struct led_rgb LED_MATRIX[] = {
-        l406,l407,l408,l505,l506,l507,
-        l105,l205,l305,l405,
-        l004,l104,l204,l304,l404,l504,
-        l003,l103,l203,l303,l403,l503,
-        l002,l102,l202,l302,l402,l502,
-        l001,l101,l201,l301,l401,l501,
-        l000,l100,l200,l300,l400,l500
-    };
-#else
-    struct led_rgb LED_MATRIX[] = {
-        l411,l410,l409,l510,l509,l508,
-        l106,l206,l306,l412,
-        l005,l107,l207,l307,l413,l511,
-        l006,l108,l208,l308,l414,l512,
-        l007,l109,l209,l309,l415,l513,
-        l008,l110,l210,l310,l416,l514,
-        l009,l111,l211,l311,l417,l515
-    };
-#endif
-    for (int i = 0; i < 40; i++) {
-        pixels[i] = LED_MATRIX[i];
-    }
-}
-
-
-static void valdur_indicate_custom_layers(void) {
-
-    if (valdur_layer_active(LAYER_Raise)) {
-        set_rgb_pixels(
-            ______, ______, ______ ,______, ______,                                                                     ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______,                                                       PINK,   PINK,   PINK,   PINK,   PINK, ______,
-            ______,   BLUE, ______ ,  BLUE,   BLUE,   BLUE,                                                     ______, ______, ______, ______, ______,   BLUE,
-            ______,   BLUE, ______ ,______, ______,   BLUE,                                                     ______, ______, ______, ______, ______, ______,
-              BLUE, ______, ______ ,______, ______, ______, ______, ______, ______,     ______, ______, ______, ______, ______, ______, ______, ______,   BLUE,
-            ______, ______, ______ ,______, ______,         ______, ______, ______,     ______,  GREEN, ______,         ______, ______, ______, ______, ______
-        );
-
-    } else if (valdur_layer_active(LAYER_Lower)) {
-        set_rgb_pixels_2(underglow_layer_lower, DT_PROP_LEN(UNDERGLOW_LAYER, layer_lower));
-        /*
-        set_rgb_pixels(
-            ______, ______, ______, ______, ______,                                                                    ______, ______, ______, ______, ______,
-            PURPLE,   PINK,   PINK,   PINK,   PINK,   PINK,                                                    ______,   GOLD, ORANGE, ORANGE, ORANGE,    RED,
-            PURPLE, ______, ______, ORANGE, ______, ______,                                                    ______, YELLOW, YELLOW, YELLOW, ORANGE, ______,
-            PURPLE, ______, ORANGE,    RED, ORANGE, ______,                                                    ______, YELLOW, YELLOW, YELLOW, ORANGE, ______,
-              BLUE, ______,    RED,    RED,    RED, ______, ______, ______, ______,    ______, ______, ______, ______, YELLOW, YELLOW, YELLOW,    RED,   BLUE,
-            ______, ______, ORANGE, ORANGE, ORANGE,         ______,  GREEN, ______,    ______, ______, ______,         YELLOW, YELLOW, YELLOW,    RED, ______
-        );
-        */
-
-    } else if (valdur_layer_active(LAYER_Gaming)) {
-        set_rgb_pixels(
-            ______, ______, ______, ______, ______,                                                                     ______, ______, ______, ______, ______,
-            ______, ______, ______, ______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______, ______, ______, ______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______,   TEAL, ______,    RED, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______,   BLUE,    RED,    RED,    RED, ______, ORANGE,   BLUE, ______,     ______, ______, ______, ______, ______, ______, ______, ______, ______,
-            ______,   BLUE, ______, ______, ______,            RED, ______, ______,     ______,  GREEN, ______,         ______, ______, ______, ______, ______
-        );
-
+static void zmk_rgb_underglow_set_layer(void) {
+    uint32_t *rgbmap = rgb_underglow_get_bindings();
+    if (rgbmap != NULL) {
+        zmk_rgb_underglow_apply_rgbmap(rgbmap, ZMK_KEYMAP_LEN);
     } else {
-        set_rgb_pixels(
-            ______, ______, ______ ,______, ______,                                                                     ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______,                                                     ______, ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______, ______, ______, ______, ______,     ______, ______, ______, ______, ______, ______, ______, ______, ______,
-            ______, ______, ______ ,______, ______,         ______, ______, ______,     ______, ______, ______,         ______, ______, ______, ______, ______
-        );
+        for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+            pixels[i] = (struct led_rgb){r : 0, g : 0, b : 0};
+        }
     }
 }
 
@@ -629,7 +516,7 @@ static void zmk_rgb_underglow_tick(struct k_work *work) {
         zmk_rgb_underglow_effect_swirl();
         break;
     case UNDERGLOW_EFFECT_LAYER_INDICATORS:
-        valdur_indicate_custom_layers();
+        zmk_rgb_underglow_set_layer();
         break;
     }
 
