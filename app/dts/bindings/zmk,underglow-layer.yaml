@@ -1,0 +1,13 @@
+description: |
+  Allows defining a keymap composed of multiple layers
+
+compatible: "zmk,underglow-layer"
+
+properties:
+  layer-base:
+    type: array
+    required: false
+  layer-lower:
+    type: array
+    required: false
+    

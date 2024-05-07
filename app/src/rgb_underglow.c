@@ -487,6 +487,45 @@ static struct led_rgb hex_to_rgb(uint8_t r, uint8_t g, uint8_t b) {
             ______, ______, ______ ,______, ______,         ______, ______, ______,     ______, ______, ______,         ______, ______, ______, ______, ______
         );
 */
+#define UNDERGLOW_LAYER DT_PATH(underglow_layer)
+const uint32_t underglow_layer_lower[] = DT_PROP(UNDERGLOW_LAYER, layer_lower);
+
+static void set_rgb_pixels_2(const uint32_t *rgbmap, size_t rgbmap_len) {
+#ifdef LEFT_HALF
+    const uint8_t LED_MATRIX[] = {
+        52,53,54,69,70,71,
+        15,27,39,51,
+        4,14,26,38,50,68,
+        3,13,25,37,49,67,
+        2,12,24,36,48,66,
+        1,11,23,35,47,65,
+        0,10,22,34,46,64
+    };
+#else
+    const uint8_t LED_MATRIX[] = {
+        57,56,55,74,73,72,
+        16,28,40,58,
+        5,17,29,41,59,75,
+        6,18,30,42,60,76,
+        7,19,31,43,61,77,
+        8,20,32,44,62,78,
+        9,21,33,45,63,79
+    };
+#endif
+    
+    for (int i = 0; i < STRIP_NUM_PIXELS; i++) {
+        if (i >= rgbmap_len) {
+            pixels[i] = ______;
+        } else {
+            pixels[i] = hex_to_rgb(
+                rgbmap[LED_MATRIX[i]] >> 16 & 0xFF,
+                rgbmap[LED_MATRIX[i]] >> 8 & 0xFF,
+                rgbmap[LED_MATRIX[i]] & 0xFF);
+        }
+    }
+
+}
+
 static inline void set_rgb_pixels(
         struct led_rgb l000, struct led_rgb l001, struct led_rgb l002, struct led_rgb l003, struct led_rgb l004,
                                                                                                     struct led_rgb l005, struct led_rgb l006, struct led_rgb l007, struct led_rgb l008, struct led_rgb l009,
@@ -527,6 +566,7 @@ static inline void set_rgb_pixels(
     }
 }
 
+
 static void valdur_indicate_custom_layers(void) {
 
     if (valdur_layer_active(LAYER_Raise)) {
@@ -540,6 +580,8 @@ static void valdur_indicate_custom_layers(void) {
         );
 
     } else if (valdur_layer_active(LAYER_Lower)) {
+        set_rgb_pixels_2(underglow_layer_lower, DT_PROP_LEN(UNDERGLOW_LAYER, layer_lower));
+        /*
         set_rgb_pixels(
             ______, ______, ______, ______, ______,                                                                    ______, ______, ______, ______, ______,
             PURPLE,   PINK,   PINK,   PINK,   PINK,   PINK,                                                    ______,   GOLD, ORANGE, ORANGE, ORANGE,    RED,
@@ -548,6 +590,7 @@ static void valdur_indicate_custom_layers(void) {
               BLUE, ______,    RED,    RED,    RED, ______, ______, ______, ______,    ______, ______, ______, ______, YELLOW, YELLOW, YELLOW,    RED,   BLUE,
             ______, ______, ORANGE, ORANGE, ORANGE,         ______,  GREEN, ______,    ______, ______, ______,         YELLOW, YELLOW, YELLOW,    RED, ______
         );
+        */
 
     } else if (valdur_layer_active(LAYER_Gaming)) {
         set_rgb_pixels(
