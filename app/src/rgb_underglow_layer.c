@@ -20,6 +20,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #endif
 
 #define DT_DRV_COMPAT zmk_underglow_layer
+#define CONFIG_ZMK_RGB_UNDERGLOW_AUTO_OFF_IDLE 1
 
 #define LAYER_ID(node) DT_PROP(node, layer_id)
 #define RGB_BINDINGS(node) DT_PROP(node, bindings)
